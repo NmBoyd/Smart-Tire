@@ -16,7 +16,7 @@
 uint32_t syncTime = 0; // time of last sync()
 
 #define ECHO_TO_SERIAL   1 // echo data to serial port
-#define WAIT_TO_START    0 // Wait for serial input in setup()
+#define WAIT_TO_START    1 // Wait for serial input in setup()
 
 // the digital pins that connect to the LEDs
 #define redLEDpin 2
