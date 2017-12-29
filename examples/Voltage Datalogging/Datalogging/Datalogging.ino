@@ -16,15 +16,16 @@
 uint32_t syncTime = 0; // time of last sync()
 
 #define ECHO_TO_SERIAL   1 // echo data to serial port
-#define WAIT_TO_START    1 // Wait for serial input in setup()
+#define WAIT_TO_START    0 // Wait for serial input in setup()
 
 // the digital pins that connect to the LEDs
 #define redLEDpin 2
 #define greenLEDpin 3
 
 // The analog pins that connect to the sensors
-#define voltageAnode A0           // analog 0
-#define voltageCathode A1                // analog 1
+#define potPin A0                 //analog 
+#define voltageAnode A1           // analog 1
+#define voltageCathode A2                // analog 2
 #define BANDGAPREF 14            // special indicator that we want to measure the bandgap
 
 #define aref_voltage 3.3         // we tie 3.3V to ARef and measure it with a multimeter!
@@ -104,9 +105,9 @@ void setup(void)
   }
   
 
-  logfile.println("millis,stamp,datetime,wire voltage,vcc");    
+  logfile.println("millis,stamp,datetime,anode voltage, cathode voltage, wire voltage, potentiometer position, vcc");    
 #if ECHO_TO_SERIAL
-  Serial.println("millis,stamp,datetime,wire voltage,temp,vcc");
+  Serial.println("millis,stamp,datetime,wire voltage,potentiometer position,vcc");
 #endif //ECHO_TO_SERIAL
  
   // If you want to set the aref to something other than 5v
@@ -167,23 +168,51 @@ void loop(void)
   Serial.print('"');
 #endif //ECHO_TO_SERIAL
 
-  analogRead(voltageAnode);
-  delay(10); 
-  int voltageAnodeVal = analogRead(voltageAnode);  
-  
-  analogRead(voltageCathode); 
-  delay(10);
-  int voltageCathodeVal = analogRead(voltageCathode);    
-  
-  // converting that reading to voltage, for 3.3v arduino use 3.3, for 5.0, use 5.0
-  float voltage = voltageAnodeVal - voltageCathodeVal  ;
-  voltage = (voltage*7.2)/1024;
-  
+  double voltageAnodeVal = analogRead(A1);
+    
   logfile.print(", ");    
-  logfile.print(voltage);
+  logfile.print(voltageAnodeVal);
 #if ECHO_TO_SERIAL
   Serial.print(", ");   
-  Serial.print(voltage);
+  Serial.print(voltageAnodeVal);
+#endif //ECHO_TO_SERIAL
+
+//////////////////////////////////////////////////////////////////////////////////////
+ 
+  double voltageCathodeVal = analogRead(A2);    
+  
+  logfile.print(", ");    
+  logfile.print(voltageCathodeVal);
+#if ECHO_TO_SERIAL
+  Serial.print(", ");   
+  Serial.print(voltageCathodeVal);
+#endif //ECHO_TO_SERIAL
+
+////////////////////////////////////////////////////////////////////////////////////
+  // converting that reading to voltage, for 3.3v arduino use 3.3, for 5.0, use 5.0
+  double nitinolV = voltageAnodeVal - voltageCathodeVal;
+  nitinolV = (nitinolV*7.2)/1023; 
+  
+  logfile.print(", ");    
+  logfile.print(nitinolV);
+#if ECHO_TO_SERIAL
+  Serial.print(", ");   
+  Serial.print(nitinolV);
+#endif //ECHO_TO_SERIAL
+
+ ////////////////////////////////////////////////////////////////////////////////////////////////// 
+ 
+  double voltagePot = analogRead(A0);
+  voltagePot = (voltagePot*7.19)/1023;           //convert count to voltage 0-7.2
+  voltagePot = 7.19-voltagePot;                  //reverse the voltage polarity in code
+  float potPos = -1.8511*(voltagePot); //+ 14.639;       //calculate potentiometer position using calibration curve data
+
+ 
+  logfile.print(", ");    
+  logfile.print(potPos);
+#if ECHO_TO_SERIAL
+  Serial.print(", ");   
+  Serial.print(potPos);
 #endif //ECHO_TO_SERIAL
 
   // Log the estimated 'VCC' voltage by measuring the internal 1.1v ref
@@ -204,16 +233,12 @@ void loop(void)
   Serial.println();
 #endif // ECHO_TO_SERIAL
 
-  digitalWrite(greenLEDpin, LOW);
 
   // Now we write data to disk! Don't sync too often - requires 2048 bytes of I/O to SD card
   // which uses a bunch of power and takes time
   if ((millis() - syncTime) < SYNC_INTERVAL) return;
   syncTime = millis();
   
-  // blink LED to show we are syncing data to the card & updating FAT!
-  digitalWrite(redLEDpin, HIGH);
   logfile.flush();
-  digitalWrite(redLEDpin, LOW);
   
 }
